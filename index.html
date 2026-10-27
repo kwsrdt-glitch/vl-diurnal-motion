@@ -504,7 +504,7 @@ gMini.add(viewMark);
 const miniAxisGeo=new THREE.BufferGeometry();miniAxisGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
 gMini.add(new THREE.Line(miniAxisGeo,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.95})));
 const miniAxisLabel=label('자전축',0.55,'#ffffff');miniAxisLabel.center.set(0.5,0.5);gMini.add(miniAxisLabel);
-const miniSpin=arcArrow(0.5,0.022,0x7cc7ff,true,4.2);gMini.add(miniSpin);
+const miniSpin=arcArrow(0.5,0.022,0x7cc7ff,true,4.2);gMini.add(miniSpin);miniSpin.visible=false;
 /* 천구: 투명한 구, 태양 길 1개, 별 길 1개만 */
 const miniArrows=[];
 const miniPivot=new THREE.Group();miniPivot.quaternion.copy(obsQuat);miniPivot.scale.setScalar(3);gMini.add(miniPivot);
@@ -715,8 +715,8 @@ function configure(){
   gMini.visible=(n===6);setMiniMode(n===6);
   sunBig.visible=rays.visible=(n===1);
   atmo.visible=true;
-  spinArrow.visible=(n===1)||(n===3&&S.mode3==='real');
-  skyArrow.visible=(n===3&&S.mode3==='app');
+  spinArrow.visible=false;
+  skyArrow.visible=false;
   axisLine.scale.y=(n===3)?4.7:1.7;
   gObs.visible=(n===2||n===4);
   skyPivot.visible=(n===2||n===3||n===4);
