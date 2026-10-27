@@ -46,7 +46,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #theoryBtn svg{width:20px;height:20px}
 
 /* 하단: 장면 조작 + 시간 */
-#ctrl{position:absolute;left:0;right:0;bottom:88px;display:flex;justify-content:center;gap:10px;pointer-events:none;padding:0 12px}
+#ctrl{position:absolute;left:0;right:0;bottom:88px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;pointer-events:none;padding:0 12px}
 #ctrl>*{pointer-events:auto}
 .seg{display:flex;gap:2px;padding:4px;border-radius:var(--r-pill);background:var(--glass);border:1px solid var(--line)}
 .seg button{min-width:56px;height:40px;padding:0 15px;border:0;border-radius:var(--r-pill);background:transparent;color:var(--sub);font-size:14px;font-weight:600;white-space:nowrap}
@@ -61,6 +61,9 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #sl::-moz-range-track{height:4px;border-radius:2px;background:rgba(255,255,255,.22)}
 #sl::-moz-range-progress{height:4px;border-radius:2px;background:var(--acc)}
 #sl::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:0}
+#ruler{flex:1;min-width:60px;height:46px;position:relative;touch-action:none;cursor:grab;display:none;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+#rulerC{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
 #ttext{flex:0 0 auto;min-width:92px;text-align:center;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
 #spd{flex:0 0 auto;height:40px;min-width:66px;padding:0 12px;border-radius:var(--r-pill);border:1px solid var(--line);background:transparent;font-size:13px;font-weight:600;color:var(--sub)}
 
@@ -134,6 +137,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 
   <div id="timebar">
     <button id="play" aria-label="재생 또는 정지"></button>
+    <div id="ruler"><canvas id="rulerC"></canvas></div>
     <input id="sl" type="range" min="0" max="24" step="0.05" value="12" aria-label="시간">
     <div id="ttext"></div>
     <button id="spd" aria-label="재생 속도"></button>
@@ -159,7 +163,7 @@ const clock=t=>{t=((t%24)+24)%24;const h=Math.floor(t),m=Math.floor((t-h)*60);
   return (h<12?'오전 ':'오후 ')+(h%12===0?12:h%12)+':'+String(m).padStart(2,'0');};
 
 const SP=[['느리게',0.25],['보통',0.5],['빠르게',1.5]];
-const S={scene:1,t:12,playing:true,spi:1,mode3:'real',showSphere:true,dir:'S',view:'top',exposeStart:20,lat:37};
+const S={scene:1,t:12,playing:true,spi:1,mode3:'real',showSphere:true,dir:'S',view:'top',exposeStart:20,lat:37,showTrails:false};
 const CFG={
   1:{min:0,max:24,step:0.05,fmt:t=>clock(t),def:12},
   2:{min:0,max:24,step:0.05,fmt:t=>clock(t),def:6},
@@ -726,9 +730,9 @@ function configure(){
   rings.visible=(n===3&&S.showSphere);
   milky.visible=(n!==3);
   sunPath.visible=(n===2);
-  sunSprite.visible=moonSprite.visible=(n===2||n===3);
+  sunSprite.visible=moonSprite.visible=(n===2||n===3||n===4);
   poleLabel.visible=(n===3);
-  trails.visible=(n===2||n===4);
+  trails.visible=(n===2||n===4)&&S.showTrails;
 }
 
 /* ───────── 이론 확인하기 서랍 ───────── */
@@ -752,7 +756,7 @@ const THEORY={
       <li>왼쪽 위 그림은 지구 위의 관측자(한국)와 천구예요. 주황색 고리와 화살표는 별이 도는 길과 방향, 노란 점선은 태양이 지나는 길, 노란 삼각형은 지금 바라보는 방향이에요.</li>
       <li>작은 그림은 손가락으로 돌려 볼 수 있어요. 원위치 버튼을 누르면 처음 각도로 돌아가요.</li></ul>
       <div class="sec">낮 하늘과 밤하늘</div>
-      <p><b>낮 하늘</b>에서는 태양과 달이 움직이는 모습을, <b>밤하늘</b>에서는 카메라 셔터를 오래 열어 찍은 것처럼 별이 지나간 자취를 볼 수 있어요.</p>
+      <p><b>낮 하늘</b>에서는 태양과 달이 움직이는 모습을, <b>밤하늘</b>에서는 별이 움직이는 모습을 볼 수 있어요. <b>별의 경로</b> 버튼을 켜면 카메라 셔터를 오래 열어 찍은 것처럼 별이 지나간 자취가 남아요.</p>
       <div class="sec">관측 방향에 따라 다른 모습</div>
       <ul>
       <li><b>동쪽 하늘</b>: 지평선에서 오른쪽 위로 비스듬히 떠올라요.</li>
@@ -810,9 +814,9 @@ const ctrl=$('#ctrl');
 function renderCtrl(n){
   let h='';
   if(n===1)h=seg([['top','북극 위에서'],['side','옆에서']],'view',S.view);
-  else if(n===2)h=seg([['day','낮 하늘'],['night','밤하늘']],'sky','day')+seg(DIRS,'look',S.dir);
+  else if(n===2)h=seg([['day','낮 하늘'],['night','밤하늘']],'sky','day')+seg(DIRS,'look',S.dir)+`<div class="seg"><button data-act="tog" data-k="showTrails" aria-pressed="${S.showTrails}">별의 경로</button></div>`;
   else if(n===3)h=seg([['real','실제 모습'],['app','겉보기 모습']],'mode',S.mode3)+`<div class="seg"><button data-act="tog" data-k="showSphere" aria-pressed="${S.showSphere}">천구</button></div>`;
-  else if(n===4)h=seg([['day','낮 하늘'],['night','밤하늘']],'sky','night')+seg(DIRS,'look',S.dir)+`<div class="seg"><button class="ico" data-act="retake" aria-label="다시 촬영">${ICON.reset}</button></div>`;
+  else if(n===4)h=seg([['day','낮 하늘'],['night','밤하늘']],'sky','night')+seg(DIRS,'look',S.dir)+`<div class="seg"><button data-act="tog" data-k="showTrails" aria-pressed="${S.showTrails}">별의 경로</button></div><div class="seg"><button class="ico" data-act="retake" aria-label="다시 촬영">${ICON.reset}</button></div>`;
   else if(n===6)h=seg([[90,'극지방'],[37,'중위도 지방'],[0,'적도 지방']],'lat',S.lat);
   else h=seg([[1,'1시간'],[3,'3시간'],[6,'6시간'],[9,'9시간']],'preset',3);
   ctrl.innerHTML=h;
@@ -833,11 +837,34 @@ ctrl.addEventListener('click',e=>{
 
 /* ───────── 시간 표시줄 ───────── */
 const sl=$('#sl'),playBtn=$('#play'),ttext=$('#ttext'),spd=$('#spd');
+/* 끊김 없이 흐르는 시간 눈금자: 가운데 선이 지금 시각이고, 눈금이 옆으로 흘러간다 */
+const ruler=$('#ruler'),rc=$('#rulerC'),PXH=22;
+const ACC=(typeof getComputedStyle==='function'?getComputedStyle(document.documentElement).getPropertyValue('--acc').trim():'')||'#ffc861';
+let rdrag=null;
+ruler.addEventListener('pointerdown',e=>{ruler.setPointerCapture(e.pointerId);rdrag={x:e.clientX};S.playing=false;syncPlay();hideHint();});
+ruler.addEventListener('pointermove',e=>{if(!rdrag)return;const dx=e.clientX-rdrag.x;rdrag.x=e.clientX;S.t-=dx/PXH;});
+['pointerup','pointercancel'].forEach(n=>ruler.addEventListener(n,()=>{rdrag=null;}));
+function drawRuler(){
+  const w=ruler.clientWidth,h=ruler.clientHeight;if(!w||!h)return;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  if(rc.width!==Math.round(w*dpr)||rc.height!==Math.round(h*dpr)){rc.width=Math.round(w*dpr);rc.height=Math.round(h*dpr);}
+  const g=rc.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+  const cx=w/2,half=Math.ceil(cx/PXH)+1,k0=Math.floor(S.t)-half,k1=Math.floor(S.t)+half;
+  g.textAlign='center';g.textBaseline='middle';g.font="600 11px 'Noto Sans KR',sans-serif";g.lineWidth=1;
+  for(let k=k0;k<=k1;k++){
+    const x=cx+(k-S.t)*PXH,hh=((k%24)+24)%24,major=(hh%6===0);
+    g.strokeStyle=major?'rgba(255,255,255,.55)':'rgba(255,255,255,.22)';
+    g.beginPath();g.moveTo(x,major?h*0.30:h*0.40);g.lineTo(x,h*0.62);g.stroke();
+    if(major){g.fillStyle='rgba(200,215,245,.78)';g.fillText(String(hh),x,h*0.82);}
+  }
+  g.fillStyle=ACC;g.fillRect(cx-1,h*0.16,2,h*0.56);
+  g.beginPath();g.arc(cx,h*0.16,3.5,0,7);g.fill();
+}
 function syncPlay(){playBtn.innerHTML=S.playing?ICON.pause:ICON.play;}
 function syncSpd(){spd.textContent=SP[S.spi][0];}
 playBtn.addEventListener('click',()=>{
   S.playing=!S.playing;
-  if(S.playing&&S.t>=CFG[S.scene].max-0.01){S.t=CFG[S.scene].min;S.exposeStart=S.t;}
+  if(S.playing&&S.scene===5&&S.t>=CFG[S.scene].max-0.01){S.t=CFG[S.scene].min;S.exposeStart=S.t;}
   hideHint();syncPlay();
 });
 sl.addEventListener('pointerdown',()=>{S.playing=false;syncPlay();hideHint();});
@@ -866,6 +893,7 @@ function setScene(n,keep){
   if(n===3){orb.tx=0;orb.dist=12.5;orb.pitch=0.5;orb.yaw=0.6;orb.min=7;orb.max=18;}
   if(n===6){orb.tx=0;orb.ty=0.3;orb.dist=11.5;orb.pitch=0.468;orb.yaw=2.376;orb.min=6;orb.max=18;S.lat=37;latPhi=37*D;}
   const is5=n===5;
+  ruler.style.display=is5?'none':'block';sl.style.display=is5?'block':'none';
   glc.style.display=is5?'none':'block';chart.style.display=is5?'block':'none';
   insetEl.style.display=(n===2||n===4)?'block':'none';
   miniReset.style.display=(n===2||n===4||n===6)?'block':'none';miniReset.style.top=(n===6)?'72px':'256px';
@@ -954,7 +982,7 @@ function update(dt){
     if(n===6)updateMini6(dt,t);
   }else{
     setObsCam(dt);
-    if(n===2){
+    {
       sunSprite.getWorldPosition(tmp);tmp.normalize();
       const sa=tmp.y, day=smooth(-0.1,0.15,sa), tw=Math.max(0,1-Math.abs(sa)/0.2)*0.8;
       U.zen.value.copy(cNightZ).lerp(cDayZ,day);
@@ -963,12 +991,8 @@ function update(dt){
       hillFar.material.color.copy(hfN).lerp(hfD,day);hillNear.material.color.copy(hnN).lerp(hnD,day);ground.material.color.copy(grN).lerp(grD,day);
       setStarOpacity(1-smooth(-0.2,0.05,sa));
       milky.material.opacity=0.6*(1-smooth(-0.2,0.05,sa));
-      trailMat.uniforms.op.value=1-smooth(-0.2,0.05,sa);updateTrails(90,t-3);
-    }else{
-      U.zen.value.copy(cNightZ);U.hor.value.copy(cNightH);U.glowAmt.value=0;
-      hillFar.material.color.copy(hfN);hillNear.material.color.copy(hnN);ground.material.color.copy(grN);
-      setStarOpacity(1);milky.material.opacity=0.6;
-      trailMat.uniforms.op.value=1;updateTrails(NTR,S.exposeStart);
+      trailMat.uniforms.op.value=1-smooth(-0.2,0.05,sa);
+      if(S.showTrails){if(n===2)updateTrails(90,t-3);else updateTrails(NTR,S.exposeStart);}
     }
   }
 }
@@ -1001,12 +1025,12 @@ function frame(now){
   const c=CFG[S.scene];
   if(S.playing){
     S.t+=dt*SP[S.spi][1];
-    if(S.t>c.max){
-      if(S.scene===5){S.t=c.max;S.playing=false;syncPlay();}
-      else{S.t=c.min+(S.t-c.max);if(S.scene===4)S.exposeStart=S.t;}
-    }
+    if(S.scene===5){if(S.t>c.max){S.t=c.max;S.playing=false;syncPlay();}}
+    else if(S.t>2400){S.t-=2400;S.exposeStart-=2400;}
   }
-  sl.value=S.t;sl.style.setProperty('--p',((S.t-c.min)/(c.max-c.min)*100).toFixed(1)+'%');
+  if(S.scene!==5&&S.t<-2400){S.t+=2400;S.exposeStart+=2400;}
+  if(S.scene===5){sl.value=S.t;sl.style.setProperty('--p',((S.t-c.min)/(c.max-c.min)*100).toFixed(1)+'%');}
+  else drawRuler();
   ttext.textContent=c.fmt(S.scene===5?Math.round(S.t):S.t);
   if(S.scene===5){drawChart();}
   else{update(dt);miniEase(dt);renderGL();}
