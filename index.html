@@ -37,6 +37,9 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #nav button{flex:0 0 auto;height:40px;padding:0 15px;border:0;border-radius:var(--r-pill);background:transparent;
   color:var(--sub);font-size:14px;font-weight:600;white-space:nowrap;letter-spacing:-.01em;transition:background .2s,color .2s}
 #nav button[aria-current=true]{background:#f3f6fc;color:#0a1020}
+#topR{display:flex;gap:8px;flex:0 0 auto}
+#fsBtn{width:48px;height:48px;border-radius:50%;background:var(--glass);border:1px solid var(--line);color:var(--text);display:flex;align-items:center;justify-content:center;padding:0}
+#fsBtn svg{width:22px;height:22px}
 #theoryBtn{flex:0 0 auto;display:flex;align-items:center;gap:7px;height:48px;padding:0 18px 0 14px;border-radius:var(--r-pill);
   background:var(--glass);border:1px solid var(--line);font-size:14px;font-weight:700}
 #theoryBtn[aria-pressed=true]{background:var(--acc);color:#1b1405;border-color:var(--acc)}
@@ -115,12 +118,12 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   <div id="top">
     <nav id="nav">
       <button data-s="1">① 지구의 자전</button>
-      <button data-s="2">② 겉보기 운동</button>
+      <button data-s="2">② 겉보기 운동·일주 운동</button>
       <button data-s="3">③ 천구</button>
-      <button data-s="4">④ 관측 방향별 일주 운동</button>
-      <button data-s="5">⑤ 회전 각도</button>
+      <button data-s="5">④ 회전 각도</button>
+      <button data-s="6">⑤ 위도에 따른 일주 운동</button>
     </nav>
-    <button id="theoryBtn" aria-pressed="false"></button>
+    <div id="topR"><button id="fsBtn" aria-label="전체 화면"></button><button id="theoryBtn" aria-pressed="false"></button></div>
   </div>
 
   <div id="inset"></div>
@@ -156,21 +159,38 @@ const clock=t=>{t=((t%24)+24)%24;const h=Math.floor(t),m=Math.floor((t-h)*60);
   return (h<12?'오전 ':'오후 ')+(h%12===0?12:h%12)+':'+String(m).padStart(2,'0');};
 
 const SP=[['느리게',0.5],['보통',1.5],['빠르게',4]];
-const S={scene:1,t:12,playing:true,spi:1,mode3:'real',showSphere:true,dir:'S',view:'top',exposeStart:20};
+const S={scene:1,t:12,playing:true,spi:1,mode3:'real',showSphere:true,dir:'S',view:'top',exposeStart:20,lat:37};
 const CFG={
   1:{min:0,max:24,step:0.05,fmt:t=>clock(t),def:12},
   2:{min:0,max:24,step:0.05,fmt:t=>clock(t),def:6},
   3:{min:0,max:24,step:0.05,fmt:t=>clock(t),def:12},
   4:{min:19,max:31,step:0.05,fmt:t=>clock(t),def:20},
-  5:{min:0,max:12,step:0.5,fmt:t=>t+'시간',def:3}
+  5:{min:0,max:12,step:1,fmt:t=>t+'시간',def:3},
+  6:{min:0,max:24,step:0.05,fmt:t=>clock(t),def:12}
 };
 const ICON={
   play:'<svg viewBox="0 0 24 24" width="22" height="22"><path d="M8.5 5.4v13.2a1 1 0 0 0 1.5.86l10.6-6.6a1 1 0 0 0 0-1.72L10 4.54a1 1 0 0 0-1.5.86z" fill="currentColor"/></svg>',
   pause:'<svg viewBox="0 0 24 24" width="22" height="22"><rect x="6" y="5" width="4.2" height="14" rx="1.4" fill="currentColor"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4" fill="currentColor"/></svg>',
   reset:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4.5v4.8h4.8"/></svg>',
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5 2.5 2.5 0 0 0 6.5 23H20"/></svg>',
+  fsOn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  fsOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
   close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
 };
+
+/* ───────── 전체 화면 ───────── */
+const fsBtn=$('#fsBtn'),fsEl=document.documentElement;
+const reqFS=fsEl.requestFullscreen||fsEl.webkitRequestFullscreen;
+const exitFS=document.exitFullscreen||document.webkitExitFullscreen;
+const isFS=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+function renderFS(){fsBtn.innerHTML=isFS()?ICON.fsOff:ICON.fsOn;fsBtn.setAttribute('aria-label',isFS()?'전체 화면 끄기':'전체 화면');}
+if(!reqFS)fsBtn.style.display='none';
+fsBtn.addEventListener('click',()=>{
+  if(isFS()){exitFS.call(document);}
+  else{const r=reqFS.call(fsEl);if(r&&r.catch)r.catch(()=>{});}
+});
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{renderFS();setTimeout(resize,150);}));
+renderFS();
 
 /* ───────── 렌더러 ───────── */
 const glc=$('#gl');
@@ -186,7 +206,7 @@ scene.add(new THREE.AmbientLight(0xffffff,0.26));
 const sunLight=new THREE.DirectionalLight(0xffffff,1.15); sunLight.position.set(10,0,0); scene.add(sunLight);
 
 /* ───────── 텍스처 도우미 ───────── */
-function label(text,h,color){
+function label(text,h,color,fixed){
   const c=document.createElement('canvas'),g=c.getContext('2d'),fs=60;
   const font=`700 ${fs}px 'Noto Sans KR','Apple SD Gothic Neo','Malgun Gothic',sans-serif`;
   g.font=font; const w=Math.ceil(g.measureText(text).width)+36; c.width=w; c.height=fs+32;
@@ -194,7 +214,7 @@ function label(text,h,color){
   g.lineWidth=11; g.strokeStyle='rgba(3,6,14,.78)'; g.strokeText(text,18,c.height/2+3);
   g.fillStyle=color||'#fff'; g.fillText(text,18,c.height/2+3);
   const tex=new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter;
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false}));
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,sizeAttenuation:!fixed}));
   sp.scale.set(h*c.width/c.height,h,1); return sp;
 }
 function radialTex(stops){
@@ -429,13 +449,23 @@ const gMini=new THREE.Group();scene.add(gMini);
 const miniCam=new THREE.PerspectiveCamera(34,1,0.5,60);
 miniCam.position.set(0.62,0.45,-0.64).normalize().multiplyScalar(12.5);   // 북동쪽 위에서 남서쪽을 내려다봄 → 교과서 그림과 같은 배치
 miniCam.lookAt(0,0.3,0);
+const mini24=[],mini6=[];
+const HY=1.02;
+function makeFadeRing(delta,color,amax){
+  const pts=[],cd=Math.cos(delta),sd=Math.sin(delta);
+  for(let i=0;i<=128;i++){const a=i/128*Math.PI*2;pts.push(new THREE.Vector3(cd*Math.cos(a),sd,cd*Math.sin(a)));}
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.ShaderMaterial({transparent:true,depthWrite:false,
+    uniforms:{col:{value:new THREE.Color(color)},amax:{value:amax},hy:{value:HY}},
+    vertexShader:'varying float vF;varying float vY;void main(){vec3 wp=(modelMatrix*vec4(position,1.0)).xyz;vF=dot(normalize(wp),normalize(cameraPosition));vY=wp.y;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
+    fragmentShader:'uniform vec3 col;uniform float amax;uniform float hy;varying float vF;varying float vY;void main(){float a=mix(0.1,amax,smoothstep(-0.4,0.55,vF));if(vY<hy)a*=0.3;gl_FragColor=vec4(col,a);}'}));
+}
 let miniDisc;
 {
   const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');
   const gr=g.createRadialGradient(128,128,0,128,128,128);gr.addColorStop(0,'rgba(4,8,20,.7)');gr.addColorStop(0.92,'rgba(4,8,20,.7)');gr.addColorStop(1,'rgba(4,8,20,0)');
   g.fillStyle=gr;g.fillRect(0,0,256,256);
   miniDisc=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));
-  miniDisc.scale.set(8.8,8.8,1);miniDisc.position.copy(miniCam.position).normalize().multiplyScalar(-3.6);gMini.add(miniDisc);
+  miniDisc.scale.set(8.8,8.8,1);miniDisc.position.copy(miniCam.position).normalize().multiplyScalar(-3.6);gMini.add(miniDisc);mini24.push(miniDisc);
 }
 /* 지구: 한국이 맨 위에 오도록 돌려 놓기 */
 const miniEarth=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),earth.material);
@@ -455,11 +485,11 @@ gMini.add(miniEarth);
 /* 지평면과 동서남북 */
 {
   const hz=new THREE.Mesh(new THREE.CircleGeometry(1.35,48),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.2,side:THREE.DoubleSide,depthWrite:false}));
-  hz.rotation.x=-Math.PI/2;hz.position.y=1.02;gMini.add(hz);
+  hz.rotation.x=-Math.PI/2;hz.position.y=1.02;gMini.add(hz);mini24.push(hz);
   const pts=[];for(let i=0;i<=64;i++){const a=i/64*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*1.35,1.02,Math.sin(a)*1.35));}
-  gMini.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.6})));
+  {const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.6}));gMini.add(ln);mini24.push(ln);}
   [['동',1.85,0,'#ffe3a0'],['서',-1.85,0,'#ffe3a0'],['남',0,1.85,'#ffe3a0'],['북',0,-1.85,'#ff9d9d']].forEach(a=>{
-    const l=label(a[0],0.82,a[3]);l.position.set(a[1],1.25,a[2]);gMini.add(l);
+    const l=label(a[0],0.82,a[3]);l.position.set(a[1],1.25,a[2]);gMini.add(l);mini24.push(l);
   });
 }
 /* 지금 바라보는 방향 */
@@ -471,14 +501,12 @@ const viewMark=new THREE.Group();viewMark.position.y=1.04;
 }
 gMini.add(viewMark);
 /* 자전축과 지구의 자전 방향 */
-gMini.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([PP.clone().multiplyScalar(-3),PP.clone().multiplyScalar(3)]),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.95})));
-{
-  const al=label('자전축',0.55,'#ffffff');al.position.copy(PP).multiplyScalar(-2.55);al.center.set(0.5,0.5);gMini.add(al);
-}
-{
-  const a=arcArrow(0.5,0.022,0x7cc7ff,true,4.2);a.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),PP);a.position.copy(PP).multiplyScalar(1.35);gMini.add(a);
-}
+const miniAxisGeo=new THREE.BufferGeometry();miniAxisGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+gMini.add(new THREE.Line(miniAxisGeo,new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.95})));
+const miniAxisLabel=label('자전축',0.55,'#ffffff');miniAxisLabel.center.set(0.5,0.5);gMini.add(miniAxisLabel);
+const miniSpin=arcArrow(0.5,0.022,0x7cc7ff,true,4.2);gMini.add(miniSpin);
 /* 천구: 투명한 구, 태양 길 1개, 별 길 1개만 */
+const miniArrows=[];
 const miniPivot=new THREE.Group();miniPivot.quaternion.copy(obsQuat);miniPivot.scale.setScalar(3);gMini.add(miniPivot);
 const miniSkyRot=new THREE.Group();miniPivot.add(miniSkyRot);
 miniPivot.add(new THREE.Mesh(new THREE.SphereGeometry(1,28,18),new THREE.MeshBasicMaterial({color:0x5b8fe0,transparent:true,opacity:0.09,side:THREE.BackSide,depthWrite:false})));
@@ -491,30 +519,23 @@ miniPivot.add(new THREE.Mesh(new THREE.SphereGeometry(1.003,40,24),new THREE.Sha
     cone.position.set(cd*Math.cos(H),sd,cd*Math.sin(H));
     cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(-Math.sin(H),0,Math.cos(H)));return cone;};
   /* 고리 3개: 태양 길(노랑) + 별이 도는 길(주황) 2개. 고리마다 화살표 1개, 별 점 1개 */
-  const fadeRing=(delta,color,amax)=>{
-    const pts=[],cd=Math.cos(delta),sd=Math.sin(delta);
-    for(let i=0;i<=128;i++){const a=i/128*Math.PI*2;pts.push(new THREE.Vector3(cd*Math.cos(a),sd,cd*Math.sin(a)));}
-    return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.ShaderMaterial({transparent:true,depthWrite:false,
-      uniforms:{col:{value:new THREE.Color(color)},amax:{value:amax}},
-      vertexShader:'varying float vF;void main(){vec3 wp=(modelMatrix*vec4(position,1.0)).xyz;vF=dot(normalize(wp),normalize(cameraPosition));gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-      fragmentShader:'uniform vec3 col;uniform float amax;varying float vF;void main(){gl_FragColor=vec4(col,mix(0.1,amax,smoothstep(-0.4,0.55,vF)));}'}));
-  };
+  const fadeRing=makeFadeRing;
   const camDir=miniCam.position.clone().normalize();
   const bestH=(d)=>{let best=0,bs=-9;for(let a=0;a<6.283;a+=0.1){
     const v=new THREE.Vector3(Math.cos(d)*Math.cos(a),Math.sin(d),Math.cos(d)*Math.sin(a)).applyQuaternion(obsQuat);
     const sc=v.dot(camDir);if(sc>bs){bs=sc;best=a;}}return best;};
   [[0,0xffd37a,null],[38*D,0xff9f4a,1.2],[65*D,0xff9f4a,3.4]].forEach((r,i)=>{
-    miniPivot.add(fadeRing(r[0],r[1],i===0?0.85:0.62));
-    miniPivot.add(ringArrow(r[0],bestH(r[0])+i*0.55-0.55,r[1]));
+    const fr=fadeRing(r[0],r[1],i===0?0.85:0.62);miniPivot.add(fr);mini24.push(fr);
+    const ar=ringArrow(r[0],0,r[1]);miniArrows.push({m:ar,d:r[0],off:i*0.55-0.55});miniPivot.add(ar);mini24.push(ar);
   });
   /* 구와 함께 도는 아주 옅은 세로선 */
   [0,1,2,3].forEach(k=>{const h=k*Math.PI/4,pts=[];
     for(let i=0;i<=64;i++){const a=i/64*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*Math.cos(h),Math.sin(a),Math.cos(a)*Math.sin(h)));}
     miniSkyRot.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x9cc2ff,transparent:true,opacity:0.12,depthWrite:false})));});
   /* 움직이는 태양 */
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:sunTex,transparent:true,depthWrite:false}));sp.scale.set(0.32,0.32,1);sp.position.set(1,0,0);miniSkyRot.add(sp);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:sunTex,transparent:true,depthWrite:false}));sp.scale.set(0.32,0.32,1);sp.position.set(1,0,0);miniSkyRot.add(sp);mini24.push(sp);
   miniPivot.add(mkPoints([0,1,0],8,0xffd37a));
-  const lb=label('북극성',0.2,'#ffd37a');lb.position.set(0,1,0);lb.center.set(1.12,0.5);miniPivot.add(lb);
+  const lb=label('북극성',0.2,'#ffd37a');lb.position.set(0,1,0);lb.center.set(1.12,0.5);miniPivot.add(lb);mini24.push(lb);
 }
 
 /* 작은 천구를 손가락으로 돌려 보기 */
@@ -531,6 +552,72 @@ function miniEase(dt){
   miniDisc.position.set(-dx*3.6,-dy*3.6,-dz*3.6);
 }
 
+/* 위도에 맞춰 작은 그림(지구 기울기·천구·화살표) 갱신 */
+const MDIR=new THREE.Vector3(Math.sin(MDEF.az)*Math.cos(MDEF.el),Math.sin(MDEF.el),Math.cos(MDEF.az)*Math.cos(MDEF.el));
+let miniLatKey=null;
+function setMiniLat(phi){
+  if(miniLatKey===phi)return;miniLatKey=phi;
+  const cp=Math.cos(phi),sp=Math.sin(phi),Y=new THREE.Vector3(0,1,0);
+  const m1=new THREE.Vector3(0,cp,sp),mP=new THREE.Vector3(0,sp,-cp),m2=new THREE.Vector3(-1,0,0);
+  miniPivot.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(m1,mP,m2));
+  const nn=new THREE.Vector3(cp*Math.cos(LON),sp,-cp*Math.sin(LON));
+  const EE=new THREE.Vector3(-Math.sin(LON),0,-Math.cos(LON));
+  const NN=new THREE.Vector3(-sp*Math.cos(LON),cp,sp*Math.sin(LON));
+  miniEarth.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(EE,nn,NN.clone().negate()).invert());
+  const ap=miniAxisGeo.attributes.position.array;ap[0]=-3*mP.x;ap[1]=-3*mP.y;ap[2]=-3*mP.z;ap[3]=3*mP.x;ap[4]=3*mP.y;ap[5]=3*mP.z;miniAxisGeo.attributes.position.needsUpdate=true;
+  miniAxisLabel.position.copy(mP).multiplyScalar(-2.55);
+  miniSpin.quaternion.setFromUnitVectors(Y,mP);miniSpin.position.copy(mP).multiplyScalar(1.35);
+  miniArrows.forEach(a=>{
+    let best=0,bs=-9;
+    for(let k=0;k<6.283;k+=0.1){
+      const v=new THREE.Vector3(Math.cos(a.d)*Math.cos(k),Math.sin(a.d),Math.cos(a.d)*Math.sin(k)).applyQuaternion(miniPivot.quaternion);
+      const sc=v.dot(MDIR);if(sc>bs){bs=sc;best=k;}
+    }
+    const H=best+a.off,cd=Math.cos(a.d),sd=Math.sin(a.d);
+    a.m.position.set(cd*Math.cos(H),sd,cd*Math.sin(H));
+    a.m.quaternion.setFromUnitVectors(Y,new THREE.Vector3(-Math.sin(H),0,Math.cos(H)));
+  });
+}
+setMiniLat(LAT);
+
+/* ───────── 장면 ⑤: 위도에 따른 일주 운동 (작은 그림과 같은 디자인의 큰 화면) ───────── */
+const R6=2.78;
+function mkRingArrow(d,H,col){
+  const cd=Math.cos(d),sd=Math.sin(d);
+  const cone=new THREE.Mesh(new THREE.ConeGeometry(0.02,0.065,12),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.85}));
+  cone.position.set(cd*Math.cos(H),sd,cd*Math.sin(H));
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(-Math.sin(H),0,Math.cos(H)));return cone;
+}
+{
+  const hz=new THREE.Mesh(new THREE.CircleGeometry(R6,72),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.12,side:THREE.DoubleSide,depthWrite:false}));
+  hz.rotation.x=-Math.PI/2;hz.position.y=HY;gMini.add(hz);mini6.push(hz);
+  const pts=[];for(let i=0;i<=96;i++){const a=i/96*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*R6,HY,Math.sin(a)*R6));}
+  const hr=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.75}));gMini.add(hr);mini6.push(hr);
+  [['북',0,-1,'#ff9d9d'],['남',0,1,'#ffe3a0'],['동',1,0,'#ffe3a0'],['서',-1,0,'#ffe3a0']].forEach(a=>{
+    const l=label(a[0],0.075,a[3],true);l.position.set(a[1]*R6*1.16,HY+0.1,a[2]*R6*1.16);gMini.add(l);mini6.push(l);
+  });
+  const hl=label('지평선',0.048,'#cfe0ff',true);hl.position.set(-R6*0.7,HY+0.03,R6*0.78);gMini.add(hl);mini6.push(hl);
+  const pl=label('천구의 북극',0.018,'#ffd37a',true);pl.position.set(0,1,0);pl.center.set(0.5,-0.9);miniPivot.add(pl);mini6.push(pl);
+  [72,54,36,18,0].forEach((dd,i)=>{
+    const d=dd*D;
+    const fr=makeFadeRing(d,0xffb25a,0.8);miniPivot.add(fr);mini6.push(fr);
+    const ar=mkRingArrow(d,0,0xffc861);miniArrows.push({m:ar,d:d,off:i*0.7-1.4});miniPivot.add(ar);mini6.push(ar);
+    const dsp=new THREE.Sprite(new THREE.SpriteMaterial({map:dotTex,transparent:true,depthWrite:false}));dsp.scale.set(0.07,0.07,1);
+    dsp.position.set(Math.cos(d)*Math.cos(i*1.3),Math.sin(d),Math.cos(d)*Math.sin(i*1.3));miniSkyRot.add(dsp);mini6.push(dsp);
+  });
+}
+miniLatKey=null;setMiniLat(LAT);
+function setMiniMode(six){mini24.forEach(o=>{o.visible=!six;});mini6.forEach(o=>{o.visible=six;});}
+let latPhi=37*D;
+function updateMini6(dt,t){
+  latPhi+=(S.lat*D-latPhi)*Math.min(1,dt*6);
+  setMiniLat(latPhi);
+  const psi=-(t-12)*Math.PI/12;
+  miniSkyRot.rotation.y=psi;viewMark.visible=false;
+  sunM.set(Math.cos(psi),0,-Math.sin(psi)).applyQuaternion(miniPivot.quaternion);
+  sunLight.position.copy(sunM).multiplyScalar(10);
+}
+
 /* ───────── 별 궤적: 굵은 띠 (장면 2, 4) ───────── */
 const NTR=170, MAXS=74;
 const tPos=new Float32Array(NTR*MAXS*4*3), tOth=new Float32Array(NTR*MAXS*4*3), tSd=new Float32Array(NTR*MAXS*4*2);
@@ -540,7 +627,7 @@ const trailGeo=new THREE.BufferGeometry();
 [['position',tPos,3],['other',tOth,3],['sd',tSd,2]].forEach(a=>{const at=new THREE.BufferAttribute(a[1],a[2]);at.setUsage(THREE.DynamicDrawUsage);trailGeo.setAttribute(a[0],at);});
 trailGeo.setIndex(new THREE.BufferAttribute(tIdx,1));trailGeo.setDrawRange(0,0);
 const trailMat=new THREE.ShaderMaterial({
-  transparent:true,depthWrite:false,
+  transparent:true,depthWrite:false,side:THREE.DoubleSide,
   uniforms:{res:{value:new THREE.Vector2(1,1)},width:{value:3},op:{value:1}},
   vertexShader:'attribute vec3 other;attribute vec2 sd;uniform vec2 res;uniform float width;varying float vT;'+
     'void main(){vec4 a=projectionMatrix*modelViewMatrix*vec4(position,1.0);vec4 b=projectionMatrix*modelViewMatrix*vec4(other,1.0);'+
@@ -579,13 +666,13 @@ function updateTrails(nStars,startT){
 }
 
 /* ───────── 카메라 조작 ───────── */
-const orb={yaw:0,pitch:1.25,dist:10,tx:2.6,min:5,max:18};
+const orb={yaw:0,pitch:1.25,dist:10,tx:2.6,ty:0,min:5,max:18};
 const obs={yaw:0,pitch:0.5,fov:78,ty:null,tp:null};
 const LOOK={E:[Math.PI/2,0.5],S:[0,0.5],W:[-Math.PI/2,0.5],N:[Math.PI,0.62]};
 function setOrbitCam(){
   const cp=Math.cos(orb.pitch);
-  cam.position.set(orb.tx+Math.sin(orb.yaw)*cp*orb.dist,Math.sin(orb.pitch)*orb.dist,Math.cos(orb.yaw)*cp*orb.dist);
-  cam.up.set(0,1,0);cam.fov=45;cam.lookAt(orb.tx,0,0);cam.updateProjectionMatrix();
+  cam.position.set(orb.tx+Math.sin(orb.yaw)*cp*orb.dist,orb.ty+Math.sin(orb.pitch)*orb.dist,Math.cos(orb.yaw)*cp*orb.dist);
+  cam.up.set(0,1,0);cam.fov=45;cam.lookAt(orb.tx,orb.ty,0);cam.updateProjectionMatrix();
 }
 function setObsCam(dt){
   if(obs.ty!==null){
@@ -601,7 +688,7 @@ function setObsCam(dt){
 const hint=$('#hint');
 function hideHint(){hint.classList.remove('show');}
 function zoom(f){
-  if(S.scene===1||S.scene===3)orb.dist=clamp(orb.dist*f,orb.min,orb.max);
+  if(S.scene===1||S.scene===3||S.scene===6)orb.dist=clamp(orb.dist*f,orb.min,orb.max);
   else if(S.scene===2||S.scene===4)obs.fov=clamp(obs.fov*f,26,115);
 }
 glc.addEventListener('wheel',e=>{e.preventDefault();hideHint();zoom(e.deltaY>0?1.1:0.9);},{passive:false});
@@ -612,7 +699,7 @@ glc.addEventListener('pointerdown',e=>{hideHint();glc.setPointerCapture(e.pointe
 glc.addEventListener('pointermove',e=>{
   const p=ptrs.get(e.pointerId);if(!p)return;
   const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
-  const orbit=S.scene===1||S.scene===3;
+  const orbit=S.scene===1||S.scene===3||S.scene===6;
   if(ptrs.size===2){const d=pdist();if(pinch0>0){const f=pinch0/d;zoom(f);}pinch0=d;return;}
   if(orbit){orb.yaw-=dx*0.008;orb.pitch=clamp(orb.pitch+dy*0.008,0.12,1.45);}
   else{obs.ty=obs.tp=null;obs.yaw+=dx*0.0045*(obs.fov/78);obs.pitch=clamp(obs.pitch+dy*0.0045*(obs.fov/78),-0.12,1.5);}
@@ -622,9 +709,10 @@ glc.addEventListener('pointermove',e=>{
 /* ───────── 화면 구성 ───────── */
 function configure(){
   const n=S.scene;
-  dome.visible=true;bgStars.visible=(n===1||n===3);
+  dome.visible=true;bgStars.visible=(n===1||n===3||n===6);
   gSpace.visible=(n===1||n===3);
   gMini.visible=false;
+  gMini.visible=(n===6);setMiniMode(n===6);
   sunBig.visible=rays.visible=(n===1);
   atmo.visible=true;
   spinArrow.visible=(n===1)||(n===3&&S.mode3==='real');
@@ -658,14 +746,22 @@ const THEORY={
       <li>태양을 향한 쪽은 <b>낮</b>, 그 반대쪽은 <b>밤</b>이 돼요.</li>
       <li>빨간 점이 한국이에요. 재생하면 한국이 낮과 밤을 오가요.</li></ul>`,
     quiz:quiz('q1','지구가 서→동으로 자전할 때, 한국에서 보면 태양은 어느 쪽으로 움직이는 것처럼 보일까요?',['동쪽 → 서쪽','서쪽 → 동쪽','움직이지 않는다'],0,'정답이에요. 지구가 서→동으로 돌기 때문에 태양은 반대인 동→서로 움직이는 것처럼 보여요. 이것을 <b>겉보기 운동</b>이라고 해요.')},
-  2:{title:'지구의 자전에 의한 겉보기 운동',
+  2:{title:'겉보기 운동과 관측 방향에 따른 일주 운동',
     body:`<ul>
-      <li>지구 위의 관측자는 자전을 느끼지 못해요. 그래서 태양·달·별이 지구의 자전 방향과 <b>반대 방향(동→서)</b>으로 움직이는 것처럼 보여요.</li>
-      <li>이렇게 실제로 움직이는 것이 아닌데 움직이는 것처럼 보이는 운동을 <b>겉보기 운동</b>이라고 해요.</li>
-      <li>노란 점선은 태양이 지나가는 길이고, 점은 1시간 간격이에요. 태양은 춘분·추분 무렵, 달은 보름달로 그렸어요.</li>
+      <li>지구 위의 관측자는 자전을 느끼지 못해요. 그래서 태양·달·별이 지구의 자전 방향과 <b>반대 방향(동→서)</b>으로 움직이는 것처럼 보여요. 이것이 <b>겉보기 운동</b>이에요.</li>
       <li>왼쪽 위 그림은 지구 위의 관측자(한국)와 천구예요. 주황색 고리와 화살표는 별이 도는 길과 방향, 노란 점선은 태양이 지나는 길, 노란 삼각형은 지금 바라보는 방향이에요.</li>
-      <li>작은 그림은 손가락으로 돌려 볼 수 있어요. '원위치'를 누르면 처음 각도로 돌아가요.</li></ul>`,
-    quiz:quiz('q2','태양이 동쪽에서 떠서 서쪽으로 지는 것처럼 보이는 진짜 까닭은?',['태양이 지구 둘레를 하루에 한 바퀴 돈다','지구가 하루에 한 바퀴 자전한다','하늘(천구)이 실제로 돌고 있다'],1,'정답이에요. 실제로 움직이는 것은 지구예요. 우리는 지구의 자전을 느끼지 못해서 태양이 움직이는 것처럼 보여요.')},
+      <li>작은 그림은 손가락으로 돌려 볼 수 있어요. 원위치 버튼을 누르면 처음 각도로 돌아가요.</li></ul>
+      <div class="sec">낮 하늘과 밤하늘</div>
+      <p><b>낮 하늘</b>에서는 태양과 달이 움직이는 모습을, <b>밤하늘</b>에서는 카메라 셔터를 오래 열어 찍은 것처럼 별이 지나간 자취를 볼 수 있어요.</p>
+      <div class="sec">관측 방향에 따라 다른 모습</div>
+      <ul>
+      <li><b>동쪽 하늘</b>: 지평선에서 오른쪽 위로 비스듬히 떠올라요.</li>
+      <li><b>남쪽 하늘</b>: 동에서 서로 지평선과 거의 나란히 움직여요.</li>
+      <li><b>서쪽 하늘</b>: 오른쪽 아래로 비스듬히 져요.</li>
+      <li><b>북쪽 하늘</b>: 북극성을 중심으로 시계 반대 방향으로 돌아요.</li></ul>
+      <p>같은 별의 움직임이라도 북쪽 하늘을 보면 시계 반대 방향, 남쪽 하늘을 보면 시계 방향으로 회전하는 것처럼 보여요.</p>`,
+    quiz:quiz('q2','태양이 동쪽에서 떠서 서쪽으로 지는 것처럼 보이는 진짜 까닭은?',['태양이 지구 둘레를 하루에 한 바퀴 돈다','지구가 하루에 한 바퀴 자전한다','하늘(천구)이 실제로 돌고 있다'],1,'정답이에요. 실제로 움직이는 것은 지구예요. 우리는 지구의 자전을 느끼지 못해서 태양이 움직이는 것처럼 보여요.')
+      +quiz('q4','북쪽 하늘의 별은 어떻게 움직여 보일까요?',['북극성을 중심으로 시계 반대 방향으로 돈다','북극성을 중심으로 시계 방향으로 돈다','동쪽에서 서쪽으로 직선으로 움직인다'],0,'정답이에요. 북쪽 하늘의 별은 북극성 둘레를 시계 반대 방향으로 돌아요.')},
   3:{title:'천구와 별의 일주 운동',
     body:`<ul>
       <li>밤하늘의 별이 거대한 구에 붙어 있는 것처럼 보여요. 이 <b>가상의 구</b>를 <b>천구</b>라고 해요.</li>
@@ -673,16 +769,13 @@ const THEORY={
       <li>지구는 시계 반대 방향으로 자전하므로, 천구는 천구의 북극을 중심으로 <b>시계 방향</b>(북극 위에서 볼 때)으로 도는 것처럼 보여요. 이것이 <b>일주 운동</b>이에요.</li>
       <li><b>실제 모습</b>은 지구가 돌고 천구는 가만히 있는 모습, <b>겉보기 모습</b>은 지구 위 사람 눈에 보이는 모습이에요.</li></ul>`,
     quiz:quiz('q3','별의 일주 운동에서 별들이 도는 중심은 어디일까요?',['태양','천구의 북극 (북극성 근처)','달'],1,'정답이에요. 지구 자전축을 늘여 천구와 만나는 점이 천구의 북극이고, 별은 그 둘레를 돌아요.')},
-  4:{title:'관측 방향에 따른 별의 일주 운동',
-    body:`<p>카메라 셔터를 오래 열어 밤하늘을 찍은 것처럼 별이 지나간 자취가 남아요. 방향을 바꿔 가며 비교해 보세요.</p>
-      <ul>
-      <li><b>동쪽 하늘</b>: 지평선에서 오른쪽 위로 비스듬히 떠올라요.</li>
-      <li><b>남쪽 하늘</b>: 동에서 서로 지평선과 거의 나란히 움직여요.</li>
-      <li><b>서쪽 하늘</b>: 지평선으로 오른쪽 아래로 비스듬히 져요.</li>
-      <li><b>북쪽 하늘</b>: 북극성을 중심으로 시계 반대 방향으로 돌아요.</li></ul>
-      <p>같은 별의 움직임이라도 북쪽 하늘을 보면 시계 반대 방향, 남쪽 하늘을 보면 시계 방향으로 회전하는 것처럼 보여요.</p>
-      <p>왼쪽 위 그림의 노란 삼각형이 지금 바라보는 방향이에요.</p>`,
-    quiz:quiz('q4','북쪽 하늘의 별은 어떻게 움직여 보일까요?',['북극성을 중심으로 시계 반대 방향으로 돈다','북극성을 중심으로 시계 방향으로 돈다','동쪽에서 서쪽으로 직선으로 움직인다'],0,'정답이에요. 북쪽 하늘의 별은 북극성 둘레를 시계 반대 방향으로 돌아요.')},
+  6:{title:'위도에 따른 별의 일주 운동',
+    body:`<ul>
+      <li><b>극지방</b>: 별이 일주 운동을 하는 경로가 지평선과 <b>나란해요</b>.</li>
+      <li><b>중위도 지방</b>: 별이 일주 운동을 하는 경로가 지평선에 <b>비스듬하게</b> 경사져 있어요.</li>
+      <li><b>적도 지방</b>: 별이 일주 운동을 하는 경로가 지평선에 <b>수직</b>이에요.</li>
+      <li>화면을 손가락으로 돌려 가며 지평선과 별이 도는 길의 관계를 비교해 보세요.</li></ul>`,
+    quiz:quiz('q6','적도 지방에서 별이 일주 운동을 하는 경로는 지평선과 어떤 관계일까요?',['지평선과 나란하다','지평선에 비스듬하다','지평선에 수직이다'],2,'정답이에요. 적도 지방에서는 별이 지평선에 수직인 경로로 뜨고 져요.')},
   5:{title:'별의 회전 각도',
     body:`<p>지구는 하루(24시간) 동안 <b>360°</b> 자전해요. 그래서 별은 한 시간에 <b>15°</b>씩 일주 운동을 해요.</p>
       <div class="formula">360° ÷ 24시간 = 15°<br>회전 각도 = 15° × 시간</div>
@@ -705,7 +798,7 @@ dscroll.addEventListener('click',e=>{
   else{b.classList.add('no');fb.className='fb';fb.textContent='다시 한번 생각해 보세요. 장면을 움직여 보면 힌트를 얻을 수 있어요.';}
 });
 function renderDrawer(n){
-  const T=THEORY[n];
+  const T=THEORY[n===4?2:n];
   dscroll.innerHTML=`<h3>${T.title}</h3><div class="sec">이론</div>${T.body}<div class="sec">확인 문제</div>${T.quiz}${NOTE}`;
   dscroll.scrollTop=0;
 }
@@ -717,9 +810,10 @@ const ctrl=$('#ctrl');
 function renderCtrl(n){
   let h='';
   if(n===1)h=seg([['top','북극 위에서'],['side','옆에서']],'view',S.view);
-  else if(n===2)h=seg(DIRS,'look',S.dir);
+  else if(n===2)h=seg([['day','낮 하늘'],['night','밤하늘']],'sky','day')+seg(DIRS,'look',S.dir);
   else if(n===3)h=seg([['real','실제 모습'],['app','겉보기 모습']],'mode',S.mode3)+`<div class="seg"><button data-act="tog" data-k="showSphere" aria-pressed="${S.showSphere}">천구</button></div>`;
-  else if(n===4)h=seg(DIRS,'look',S.dir)+`<div class="seg"><button class="ico" data-act="retake" aria-label="다시 촬영">${ICON.reset}</button></div>`;
+  else if(n===4)h=seg([['day','낮 하늘'],['night','밤하늘']],'sky','night')+seg(DIRS,'look',S.dir)+`<div class="seg"><button class="ico" data-act="retake" aria-label="다시 촬영">${ICON.reset}</button></div>`;
+  else if(n===6)h=seg([[90,'극지방'],[37,'중위도 지방'],[0,'적도 지방']],'lat',S.lat);
   else h=seg([[1,'1시간'],[3,'3시간'],[6,'6시간'],[9,'9시간']],'preset',3);
   ctrl.innerHTML=h;
 }
@@ -727,6 +821,8 @@ ctrl.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,v=b.dataset.v;
   const press=()=>b.parentElement.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));
   hideHint();
+  if(a==='lat'){S.lat=+v;press();return;}
+  if(a==='sky'){setScene(v==='night'?4:2,true);return;}
   if(a==='view'){S.view=v;press();if(v==='top'){orb.pitch=1.25;orb.yaw=0;}else{orb.pitch=0.25;orb.yaw=0.15;}}
   else if(a==='look'){S.dir=v;press();const l=LOOK[v];obs.ty=l[0];obs.tp=l[1];}
   else if(a==='mode'){S.mode3=v;press();configure();}
@@ -756,28 +852,31 @@ insetEl.addEventListener('pointermove',e=>{if(!mdrag)return;const dx=e.clientX-m
   MV.az-=dx*0.012;MV.el=clamp(MV.el+dy*0.01,-0.7,1.45);});
 ['pointerup','pointercancel'].forEach(n=>insetEl.addEventListener(n,()=>{mdrag=null;}));
 miniReset.innerHTML=ICON.reset;
-miniReset.addEventListener('click',()=>{MV.tAz=MDEF.az;MV.tEl=MDEF.el;});
+miniReset.addEventListener('click',()=>{if(S.scene===6){orb.yaw=2.376;orb.pitch=0.468;orb.dist=11.5;}else{MV.tAz=MDEF.az;MV.tEl=MDEF.el;}});
 let hintTimer=0;
-function setScene(n){
+function setScene(n,keep){
   S.scene=n;
-  document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current',+b.dataset.s===n));
+  document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current',+b.dataset.s===(n===4?2:n)));
   const c=CFG[n];sl.min=c.min;sl.max=c.max;sl.step=c.step;S.t=c.def;
   if(n!==1)S.playing=false;
-  if(n===4){S.exposeStart=S.t;S.dir='S';obs.yaw=0;obs.pitch=0.5;obs.fov=88;obs.ty=obs.tp=null;}
-  if(n===2){S.dir='S';obs.yaw=0;obs.pitch=0.5;obs.fov=78;obs.ty=obs.tp=null;}
+  if(n===4){S.exposeStart=S.t;if(!keep){S.dir='S';obs.yaw=0;obs.pitch=0.5;obs.fov=88;obs.ty=obs.tp=null;}}
+  if(n===2&&!keep){S.dir='S';obs.yaw=0;obs.pitch=0.5;obs.fov=78;obs.ty=obs.tp=null;}
   if(n===1){S.view='top';orb.tx=2.6;orb.dist=10;orb.pitch=1.25;orb.yaw=0;orb.min=5;orb.max=18;}
+  orb.ty=0;
   if(n===3){orb.tx=0;orb.dist=12.5;orb.pitch=0.5;orb.yaw=0.6;orb.min=7;orb.max=18;}
+  if(n===6){orb.tx=0;orb.ty=0.3;orb.dist=11.5;orb.pitch=0.468;orb.yaw=2.376;orb.min=6;orb.max=18;S.lat=37;latPhi=37*D;}
   const is5=n===5;
   glc.style.display=is5?'none':'block';chart.style.display=is5?'block':'none';
-  insetEl.style.display=miniReset.style.display=(n===2||n===4)?'block':'none';
+  insetEl.style.display=(n===2||n===4)?'block':'none';
+  miniReset.style.display=(n===2||n===4||n===6)?'block':'none';miniReset.style.top=(n===6)?'72px':'256px';
   $('#zoom').style.display=(n===5)?'none':'flex';
   renderCtrl(n);renderDrawer(n);setDrawer(false);
   configure();syncPlay();resize();
   hideHint();clearTimeout(hintTimer);
-  if(n<=4){hint.textContent=(n===1||n===3)?'화면을 드래그해서 돌려 보세요':'화면을 드래그해서 둘러보세요';
+  if((n<=4||n===6)&&!keep){hint.textContent=(n===1||n===3||n===6)?'화면을 드래그해서 돌려 보세요':'화면을 드래그해서 둘러보세요';
     hintTimer=setTimeout(()=>hint.classList.add('show'),500);setTimeout(hideHint,5200);}
 }
-$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setScene(+b.dataset.s);});
+$('#nav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=+b.dataset.s;if(k===2&&S.scene===4)return;setScene(k);});
 
 /* ───────── 크기 맞춤 ───────── */
 function resize(){
@@ -795,7 +894,7 @@ function drawChart(){
   const g=chart.getContext('2d'),w=chart._w,h=chart._h,dpr=chart._dpr;if(!w)return;
   g.setTransform(dpr,0,0,dpr,0,0);
   const bg=g.createLinearGradient(0,0,0,h);bg.addColorStop(0,'#03060e');bg.addColorStop(1,'#0e1a3a');g.fillStyle=bg;g.fillRect(0,0,w,h);
-  const hrs=Math.round(S.t*2)/2, phi=hrs*15*D, cx=w/2, cy=h*0.5, s=Math.min(w*0.4,(h-210)/2)/50;
+  const hrs=Math.round(S.t), phi=hrs*15*D, cx=w/2, cy=h*0.5, s=Math.min(w*0.4,(h-210)/2)/50;
   const P=(x,y)=>[cx+x*s,cy-y*s];
   g.textBaseline='middle';g.lineCap='round';
   g.strokeStyle='rgba(160,185,255,.2)';g.lineWidth=1;g.setLineDash([3,7]);
@@ -832,13 +931,14 @@ function drawChart(){
 }
 
 /* ───────── 매 프레임 갱신 ───────── */
-const tmp=new THREE.Vector3(), sunW=new THREE.Vector3();
+const tmp=new THREE.Vector3(), sunW=new THREE.Vector3(), sunM=new THREE.Vector3();
 const cNightZ=new THREE.Color('#040716'),cNightH=new THREE.Color('#0c1636'),cDayZ=new THREE.Color('#3b82d4'),cDayH=new THREE.Color('#a9d4f5'),cTw=new THREE.Color('#ff9d5c');
 const hfN=new THREE.Color('#0a1226'),hfD=new THREE.Color('#5f8f86'),hnN=new THREE.Color('#050914'),hnD=new THREE.Color('#2f5f44'),grN=new THREE.Color('#060a14'),grD=new THREE.Color('#3a7449');
 const spaceZ=new THREE.Color('#03060e'),spaceH=new THREE.Color('#0a1228');
 
 function update(dt){
   const n=S.scene,t=S.t;
+  sunLight.position.set(10,0,0);
   if(n===4){
     if(t<S.exposeStart)S.exposeStart=t;
     if(t-S.exposeStart>12)S.exposeStart=t-12;
@@ -848,9 +948,10 @@ function update(dt){
   skyPivot.updateMatrixWorld(true);
   sunSprite.getWorldPosition(sunW);sunW.normalize();
   const U=domeMat.uniforms;
-  if(n===1||n===3){
+  if(n===1||n===3||n===6){
     setOrbitCam();U.zen.value.copy(spaceZ);U.hor.value.copy(spaceH);U.glowAmt.value=0;
     if(n===3)setStarOpacity(1);
+    if(n===6)updateMini6(dt,t);
   }else{
     setObsCam(dt);
     if(n===2){
@@ -882,8 +983,11 @@ function renderGL(){
     const iw=insetEl.offsetWidth,x=insetEl.offsetLeft,y=h-insetEl.offsetTop-iw;
     dome.visible=false;bgStars.visible=false;gObs.visible=false;skyPivot.visible=false;trails.visible=false;gSpace.visible=false;
     gMini.visible=true;
-    miniSkyRot.rotation.y=-(S.t-12)*Math.PI/12;viewMark.rotation.y=obs.yaw;
-    sunLight.position.copy(sunW).multiplyScalar(10);
+    setMiniLat(LAT);setMiniMode(false);
+    const psi=-(S.t-12)*Math.PI/12;
+    miniSkyRot.rotation.y=psi;viewMark.rotation.y=obs.yaw;viewMark.visible=true;
+    sunM.set(Math.cos(psi),0,-Math.sin(psi)).applyQuaternion(miniPivot.quaternion);
+    sunLight.position.copy(sunM).multiplyScalar(10);
     renderer.setScissorTest(true);renderer.setViewport(x,y,iw,iw);renderer.setScissor(x,y,iw,iw);
     renderer.clearDepth();renderer.render(scene,miniCam);renderer.setScissorTest(false);
     sunLight.position.set(10,0,0);
@@ -903,7 +1007,7 @@ function frame(now){
     }
   }
   sl.value=S.t;sl.style.setProperty('--p',((S.t-c.min)/(c.max-c.min)*100).toFixed(1)+'%');
-  ttext.textContent=c.fmt(S.scene===5?Math.round(S.t*2)/2:S.t);
+  ttext.textContent=c.fmt(S.scene===5?Math.round(S.t):S.t);
   if(S.scene===5){drawChart();}
   else{update(dt);miniEase(dt);renderGL();}
   requestAnimationFrame(frame);
