@@ -121,10 +121,10 @@ button{font-family:inherit;color:inherit;cursor:pointer}
   <div id="top">
     <nav id="nav">
       <button data-s="1">① 지구의 자전</button>
-      <button data-s="2">② 겉보기 운동·일주 운동</button>
-      <button data-s="3">③ 천구</button>
-      <button data-s="5">④ 회전 각도</button>
-      <button data-s="6">⑤ 위도에 따른 일주 운동</button>
+      <button data-s="3">② 천구</button>
+      <button data-s="2">③ 겉보기 운동·일주 운동</button>
+      <button data-s="6">④ 위도에 따른 일주 운동</button>
+      <button data-s="5">⑤ 회전 각도</button>
     </nav>
     <div id="topR"><button id="fsBtn" aria-label="전체 화면"></button><button id="theoryBtn" aria-pressed="false"></button></div>
   </div>
@@ -313,17 +313,30 @@ const atmo=new THREE.Mesh(new THREE.SphereGeometry(1.075,48,32),new THREE.Shader
   fragmentShader:'varying vec3 vN,vWN;void main(){float i=pow(clamp(-vN.z,0.0,1.0),1.4)*2.8;float lit=smoothstep(-0.4,0.5,vWN.x);gl_FragColor=vec4(0.38,0.66,1.0,1.0)*i*lit;}'
 }));
 gSpace.add(atmo);
-const korea=new THREE.Group();
+const korea=new THREE.Group();let koreaDisk,koreaLabel,koreaHz3;
 (function(){
   const n=new THREE.Vector3(Math.cos(LAT)*Math.cos(LON),Math.sin(LAT),-Math.cos(LAT)*Math.sin(LON));
-  korea.position.copy(n); korea.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),n);
+  korea.position.copy(n);
+  /* 한국 지점의 방향: 로컬 +x=동, +y=위, +z=남 (북은 −z) */
+  const EEl=new THREE.Vector3(-Math.sin(LON),0,-Math.cos(LON)), NNl=new THREE.Vector3(-Math.sin(LAT)*Math.cos(LON),Math.cos(LAT),Math.sin(LAT)*Math.sin(LON));
+  korea.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(EEl,n,NNl.clone().negate()));
   const stick=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.2,8),new THREE.MeshBasicMaterial({color:0xffffff}));
   stick.position.y=0.1; korea.add(stick);
   const head=new THREE.Mesh(new THREE.SphereGeometry(0.052,16,12),new THREE.MeshBasicMaterial({color:0xff6b5e}));
   head.position.y=0.23; korea.add(head);
-  const disk=new THREE.Mesh(new THREE.CircleGeometry(0.3,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.28,side:THREE.DoubleSide,depthWrite:false}));
-  disk.rotation.x=-Math.PI/2; disk.position.y=0.012; korea.add(disk);
-  const lb=label('한국',0.2,'#ffffff'); lb.position.set(0,0.46,0); korea.add(lb);
+  koreaDisk=new THREE.Mesh(new THREE.CircleGeometry(0.3,32),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.28,side:THREE.DoubleSide,depthWrite:false}));
+  koreaDisk.rotation.x=-Math.PI/2; koreaDisk.position.y=0.012; korea.add(koreaDisk);
+  koreaLabel=label('한국',0.2,'#ffffff'); koreaLabel.position.set(0,0.46,0); korea.add(koreaLabel);
+  /* ③ 천구 탭: 지구 위 관측자의 동서남북 */
+  koreaHz3=new THREE.Group();
+  const hz3=new THREE.Mesh(new THREE.CircleGeometry(0.6,48),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false}));
+  hz3.rotation.x=-Math.PI/2;hz3.position.y=0.012;koreaHz3.add(hz3);
+  {const pts=[];for(let i=0;i<=64;i++){const a=i/64*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*0.6,0.014,Math.sin(a)*0.6));}
+   koreaHz3.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.6})));}
+  [['동',1,0,'#ffe3a0'],['서',-1,0,'#ffe3a0'],['남',0,1,'#ffe3a0'],['북',0,-1,'#ff9d9d']].forEach(a=>{
+    const l=label(a[0],0.046,a[3],true);l.position.set(a[1]*0.84,0.1,a[2]*0.84);koreaHz3.add(l);
+  });
+  korea.add(koreaHz3);
   earth.add(korea);
 })();
 
@@ -717,6 +730,7 @@ function configure(){
   gSpace.visible=(n===1||n===3);
   gMini.visible=false;
   gMini.visible=(n===6);setMiniMode(n===6);
+  koreaHz3.visible=(n===3);koreaDisk.visible=(n!==3);koreaLabel.visible=(n!==3);
   sunBig.visible=rays.visible=(n===1);
   atmo.visible=true;
   spinArrow.visible=false;
